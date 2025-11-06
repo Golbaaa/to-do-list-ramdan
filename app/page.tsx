@@ -128,7 +128,14 @@ export default function TodoPage() {
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
-        <MainContent todos={todos as any} onToggle={toggleComplete} onDelete={deleteTodo} onAdd={addTodo} onUpdate={updateTodo} />
+        <MainContent
+          todos={todos as any}
+          onToggle={toggleComplete}
+          onDelete={deleteTodo}
+          onAdd={addTodo}
+          onUpdate={updateTodo}
+          onOpenNewTaskModal={handleOpenNewTaskModal}
+        />
         <NewTaskModal
           isOpen={isNewTaskModalOpen}
           onClose={handleCloseNewTaskModal}

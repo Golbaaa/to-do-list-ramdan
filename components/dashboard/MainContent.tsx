@@ -12,31 +12,26 @@ interface Todo {
 }
 
 export default function MainContent({
-  todos,
-  onToggle,
-  onDelete,
-  onAdd,
-  onUpdate,
+  todos,
+  onToggle,
+  onDelete,
+  onAdd,
+  onUpdate,
+  onOpenNewTaskModal,
 }: {
   todos: Todo[]
   onToggle: (id: string, current: boolean) => void | Promise<void>
   onDelete: (id: string) => void | Promise<void>
-  onAdd: (task: string) => void | Promise<void>
+  onAdd: (task: string | any) => void | Promise<void>
   onUpdate: (updated: Todo) => void | Promise<void>
+  onOpenNewTaskModal?: () => void | Promise<void>
 }) {
-  const [showAdd, setShowAdd] = React.useState(false)
-  const [newTask, setNewTask] = React.useState('')
   const [search, setSearch] = React.useState('')
   const [view, setView] = React.useState<'list' | 'grid'>('list')
   const [editingTask, setEditingTask] = React.useState<Todo | null>(null)
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null)
 
-  const handleAdd = async () => {
-    if (!newTask.trim()) return
-    await onAdd(newTask)
-    setNewTask('')
-    setShowAdd(false)
-  }
+  // Add task is handled through the NewTaskModal opened by the parent via onOpenNewTaskModal
 
   const openEditModal = (task: Todo) => {
     setEditingTask(task)
@@ -102,32 +97,15 @@ export default function MainContent({
           </Button>
           <Button
             variant="default"
-            className="bg-black text-white"
-            onClick={() => setShowAdd((s) => !s)}
+            className="bg-black text-white flex items-center gap-2"
+            onClick={() => onOpenNewTaskModal && onOpenNewTaskModal()}
           >
-            Add Task
+            <span className="text-lg">＋</span>
+            <span>Add Task</span>
           </Button>
         </div>
       </div>
 
-      {showAdd && (
-        <div className="mb-4">
-          <div className="flex gap-2">
-            <input
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-              className="flex-1 px-4 py-2 rounded-lg border shadow-sm"
-              placeholder="Task title..."
-            />
-            <Button onClick={handleAdd} className="bg-black text-white">
-              Add
-            </Button>
-            <Button variant="outline" onClick={() => setShowAdd(false)}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
 
 
       {/* Tasks table/card list */}
