@@ -3,12 +3,12 @@ import { Button } from '../ui/button'
 import EditTaskModal from './EditTaskModal'
 
 interface Todo {
-  id: string
-  title: string
-  category?: string 
-  priority?: 'HIGH' | 'MEDIUM' | 'LOW' // ⚠️ PERBAIKAN: Ubah interface agar sesuai dengan casing database
-  is_complete: boolean
-  inserted_at?: string
+  id: string
+  title: string
+  category?: string 
+  priority?: 'HIGH' | 'MEDIUM' | 'LOW' | 'high' | 'medium' | 'low'
+  is_complete: boolean
+  inserted_at?: string
 }
 
 export default function MainContent({
@@ -26,230 +26,219 @@ export default function MainContent({
   onUpdate: (updated: Todo) => void | Promise<void>
   onOpenNewTaskModal?: () => void | Promise<void>
 }) {
-  const [search, setSearch] = React.useState('')
-  const [view, setView] = React.useState<'list' | 'grid'>('list')
-  const [editingTask, setEditingTask] = React.useState<Todo | null>(null)
-  const [openMenuId, setOpenMenuId] = React.useState<string | null>(null)
+  const [search, setSearch] = React.useState('')
+  const [editingTask, setEditingTask] = React.useState<Todo | null>(null)
+  const [openMenuId, setOpenMenuId] = React.useState<string | null>(null)
 
-  // Add task is handled through the NewTaskModal opened by the parent via onOpenNewTaskModal
+  const openEditModal = (task: Todo) => {
+    setEditingTask(task)
+    setOpenMenuId(null)
+  }
 
-  const openEditModal = (task: Todo) => {
-    setEditingTask(task)
-    setOpenMenuId(null)
-  }
+  const closeEditModal = () => setEditingTask(null)
 
-  const closeEditModal = () => setEditingTask(null)
-
-  // ⚠️ PERUBAHAN UTAMA: Konversi data sebelum dikirim ke onUpdate
-  const handleSave = async (updated: Todo) => {
-    // Pastikan priority dikirim dalam casing yang benar (HIGH, MEDIUM, LOW)
-    const priorityToSave = updated.priority ? updated.priority.toUpperCase() : undefined;
-    
-    // Buat objek baru dengan priority yang sudah dikonversi
+  const handleSave = async (updated: Todo) => {
+    const priorityToSave = updated.priority ? updated.priority.toUpperCase() : undefined
     const taskToSave: Todo = {
       ...updated,
       priority: priorityToSave as 'HIGH' | 'MEDIUM' | 'LOW' | undefined,
     }
+    await onUpdate(taskToSave)
+    setEditingTask(null)
+  }
 
-    await onUpdate(taskToSave)
-    setEditingTask(null)
-  }
+  const filtered = todos.filter((t) => t.title.toLowerCase().includes(search.toLowerCase()))
 
-  const filtered = todos.filter((t) => t.title.toLowerCase().includes(search.toLowerCase()))
+  const getPriorityColor = (priority?: string) => {
+    const p = priority?.toUpperCase()
+    if (p === 'HIGH') return { bg: 'bg-red-50', text: 'text-red-700', badge: 'bg-red-100' }
+    if (p === 'MEDIUM') return { bg: 'bg-yellow-50', text: 'text-yellow-700', badge: 'bg-yellow-100' }
+    if (p === 'LOW') return { bg: 'bg-green-50', text: 'text-green-700', badge: 'bg-green-100' }
+    return { bg: 'bg-gray-50', text: 'text-gray-700', badge: 'bg-gray-100' }
+  }
 
-  return (
-    <main className="w-full p-8">
-      {/* ... Heading, Filter Bar, Inline Add Form (TIDAK BERUBAH) ... */}
+  const getCategoryColor = (category?: string) => {
+    if (category === 'Bug') return 'bg-red-100 text-red-700'
+    if (category === 'Feature') return 'bg-purple-100 text-purple-700'
+    if (category === 'Task') return 'bg-blue-100 text-blue-700'
+    return 'bg-gray-100 text-gray-700'
+  }
 
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Welcome back!</h1>
-          <p className="text-sm text-muted-foreground">Here's a list of your tasks for this month.</p>
+  if (filtered.length === 0 && todos.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-block">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mb-4">
+            📝
+          </div>
         </div>
-
-        <div className="flex items-center gap-4">
-          {/* avatar */}
-          <div className="w-10 h-10 rounded-full bg-black" aria-hidden />
-        </div>
+        <h3 className="text-xl font-semibold text-gray-900">No tasks yet</h3>
+        <p className="text-gray-600 mt-2">Create your first task to get started</p>
+        <button
+          onClick={() => onOpenNewTaskModal && onOpenNewTaskModal()}
+          className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+        >
+          Create Task
+        </button>
       </div>
+    )
+  }
 
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+  return (
+    <main className="w-full">
+      {/* Search & Filter Bar */}
+      <div className="mb-6 flex items-center gap-4">
+        <div className="flex-1 relative">
+          <svg className="absolute left-3 top-3 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter tasks..."
-            className="flex-1 min-w-0 px-4 py-2 rounded-lg shadow-sm border"
+            placeholder="Search tasks..."
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           />
-
-          <Button variant="outline" className="px-3">
-            Status ▾
-          </Button>
-
-          <Button variant="outline" className="px-3">
-            Priority ▾
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" className="px-2" onClick={() => setView(view === 'list' ? 'grid' : 'list')}>
-            {view === 'list' ? 'Grid' : 'List'}
-          </Button>
-          <Button
-            variant="default"
-            className="bg-black text-white flex items-center gap-2"
-            onClick={() => onOpenNewTaskModal && onOpenNewTaskModal()}
-          >
-            <span className="text-lg">＋</span>
-            <span>Add Task</span>
-          </Button>
         </div>
       </div>
 
-
-
-      {/* Tasks table/card list */}
-      <div className="bg-white rounded-lg shadow-sm">
-        {/* Header row (Penyesuaian kolom di sini masih belum sempurna karena checkbox masih ada) */}
-        <div className="hidden md:flex items-center px-4 py-3 border-b text-sm font-medium text-muted-foreground">
-          {/* ⚠️ HILANGKAN W-8 DAN CEKBOX DI ROW */}
-          <div className="w-8" /> 
-          <div className="flex-1">Task</div>
-          <div className="w-40">Status</div>
-          <div className="w-32">Priority</div>
-          <div className="w-12 text-right">Actions</div>
-        </div>
-
-        {/* Rows */}
-        <div>
-          {filtered.map((t) => {
-            
-            // --- LOGIKA PRIORITY DINAMIS (MENGGUNAKAN HIGH/MEDIUM/LOW) ---
-            const priority = t.priority || 'MEDIUM'; 
-            let priorityColorClass = 'text-gray-500'; 
-            
-            if (priority === 'HIGH') {
-              priorityColorClass = 'text-red-500'; 
-            } else if (priority === 'MEDIUM') {
-              priorityColorClass = 'text-yellow-600'; // ⚠️ Ubah ke yellow-600/500
-            } else if (priority === 'LOW') {
-              priorityColorClass = 'text-green-500'; 
-            }
-            // -----------------------------------------------------------------
+      {/* Tasks Grid/List */}
+      <div className="space-y-3">
+        {filtered.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <p>No tasks found matching "{search}"</p>
+          </div>
+        ) : (
+          filtered.map((t) => {
+            const priorityColor = getPriorityColor(t.priority)
+            const categoryColor = getCategoryColor(t.category)
+            const priority = (t.priority || 'MEDIUM').toUpperCase()
 
             return (
               <div
                 key={t.id}
-                className={`flex items-center px-4 py-4 border-b last:border-b-0 ${t.is_complete ? 'text-gray-400' : ''}`}
+                className={`bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-all p-4 group ${
+                  t.is_complete ? 'opacity-75' : ''
+                }`}
               >
-                {/* ⚠️ HILANGKAN DIV CHECKBOX W-8 INI ⚠️ */}
-                <div className="w-8 flex justify-center">
-                  <input
-                    type="checkbox"
-                    checked={t.is_complete}
-                    onChange={() => onToggle(t.id, t.is_complete)}
-                    className="w-4 h-4"
-                  />
-                </div>
+                <div className="flex items-start gap-4">
+                  {/* Checkbox */}
+                  <div className="flex-shrink-0 pt-1">
+                    <input
+                      type="checkbox"
+                      checked={t.is_complete}
+                      onChange={() => onToggle(t.id, t.is_complete)}
+                      className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </div>
 
-                {/* Task id + title + small tag */}
-                {/* ⚠️ PERBAIKI LEBAR DAN PADDING setelah menghapus checkbox (pl-4 jika dihapus) */}
-                <div className="flex-1 min-w-0 pl-4"> 
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500">TASK-{String(t.id).slice(-4).toUpperCase()}</span>
-                    <span className="text-sm font-medium truncate">{t.title}</span>
-                    
-                    {/* LOGIKA CATEGORY DINAMIS */}
-                    {t.category && (
-                      <span
-                        className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
-                          t.category === 'Bug' 
-                            ? 'bg-red-50 text-red-700'
-                            : t.category === 'Feature' 
-                            ? 'bg-purple-50 text-purple-700'
-                            : 'bg-blue-50 text-blue-700'
-                        }`}
-                      >
-                        {t.category}
-                      </span>
+                  {/* Task Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3
+                            className={`text-base font-medium ${
+                              t.is_complete
+                                ? 'line-through text-gray-500'
+                                : 'text-gray-900'
+                            }`}
+                          >
+                            {t.title}
+                          </h3>
+                          {t.category && (
+                            <span
+                              className={`inline-flex text-xs font-medium px-2.5 py-0.5 rounded-full ${categoryColor}`}
+                            >
+                              {t.category}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {t.inserted_at ? new Date(t.inserted_at).toLocaleDateString() : 'No date'}
+                        </p>
+                      </div>
+
+                      {/* Status & Priority Badges */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span
+                          className={`inline-flex text-xs font-semibold px-2.5 py-1 rounded-full ${
+                            t.is_complete
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}
+                        >
+                          {t.is_complete ? '✓ Done' : '○ Todo'}
+                        </span>
+                        <span className={`inline-flex text-xs font-semibold px-2.5 py-1 rounded-full ${priorityColor.badge} ${priorityColor.text}`}>
+                          {priority === 'HIGH' && '🔴'} {priority === 'MEDIUM' && '🟡'} {priority === 'LOW' && '🟢'} {priority.charAt(0) + priority.slice(1).toLowerCase()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions Menu */}
+                  <div className="flex-shrink-0 relative opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => setOpenMenuId(t.id === openMenuId ? null : t.id)}
+                      className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="6" cy="12" r="1.5" />
+                        <circle cx="12" cy="12" r="1.5" />
+                        <circle cx="18" cy="12" r="1.5" />
+                      </svg>
+                    </button>
+
+                    {openMenuId === t.id && (
+                      <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null)
+                            openEditModal(t)
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null)
+                            onToggle(t.id, t.is_complete)
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {t.is_complete ? 'Mark Todo' : 'Mark Done'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null)
+                            onDelete(t.id)
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">{t.inserted_at ?? ''}</div>
-                </div>
-
-                {/* Status */}
-                <div className="w-40">
-                  <span
-                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${
-                      t.is_complete ? 'bg-green-50 text-green-700 border-green-100' : 'bg-yellow-50 text-yellow-700 border-yellow-100'
-                    }`}
-                  >
-                    <svg className="w-3 h-3" viewBox="0 0 8 8" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="4" cy="4" r="4" />
-                    </svg>
-                    <span>{t.is_complete ? 'Done' : 'In Progress'}</span>
-                  </span>
-                </div>
-
-                {/* Priority */}
-                <div className="w-32">
-                  <div className="inline-flex items-center gap-2 text-sm">
-                    {/* IKON PANAH MENGGUNAKAN WARNA DINAMIS */}
-                    <svg className={`w-3 h-3 ${priorityColorClass}`} viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M4 0v6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                      <path d="M1.2 2.2L4 0l2.8 2.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    {/* Teks ditampilkan dalam format huruf kapital/judul */}
-                    <span className="font-medium">{priority.charAt(0) + priority.slice(1).toLowerCase()}</span> 
-                  </div>
-                </div>
-
-                {/* Actions (kebab) */}
-                <div className="w-12 text-right relative">
-                  <button
-                    aria-label="more"
-                    className="px-2 py-1 rounded hover:bg-slate-100"
-                    onClick={() => setOpenMenuId(t.id === openMenuId ? null : t.id)}
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="5" r="1.5" fill="currentColor" />
-                      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-                      <circle cx="12" cy="19" r="1.5" fill="currentColor" />
-                    </svg>
-                  </button>
-
-                  {openMenuId === t.id && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-lg z-10">
-                      <button
-                        onClick={() => { setOpenMenuId(null); openEditModal(t) }}
-                        className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        onClick={() => { setOpenMenuId(null); onDelete(t.id) }}
-                        className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
-                      >
-                        Delete
-                      </button>
-
-                      <button
-                        onClick={() => { setOpenMenuId(null); onToggle(t.id, t.is_complete) }}
-                        className="block w-full text-left px-4 py-2 hover:bg-gray-100"
-                      >
-                        {t.is_complete ? 'Mark In Progress' : 'Mark Complete'}
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             )
-          })}
-        </div>
-      </div>
-      {/* Edit modal */}
-      <EditTaskModal isOpen={!!editingTask} onClose={closeEditModal} task={editingTask} onSave={handleSave} />
-    </main>
-  )
+          })
+        )}
+      </div>
+
+      {/* Edit Modal */}
+      <EditTaskModal isOpen={!!editingTask} onClose={closeEditModal} task={editingTask} onSave={handleSave} />
+    </main>
+  )
 }

@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import React, { useEffect, useState } from 'react'
 import Sidebar from '@/components/dashboard/Sidebar'
@@ -6,6 +6,7 @@ import Header from '@/components/dashboard/Header'
 import MainContent from '@/components/dashboard/MainContent'
 import NewTaskModal from '@/components/tasks/NewTaskModal'
 import { supabase } from '@/lib/supabaseClient'
+import { useRouter } from 'next/navigation'
 
 // --- PERBAIKAN 1: INTERFACE ---
 interface Todo {
@@ -19,7 +20,7 @@ interface Todo {
   inserted_at?: string 
 }
 
-export default function TodoPage() {
+function TodoPage() {
   const [todos, setTodos] = useState<Todo[]>([])
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false)
 
@@ -149,4 +150,46 @@ export default function TodoPage() {
       </div>
     </div>
   )
+}
+
+export default function AuthWrapper() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let subscription: any = null
+
+    async function verify() {
+      try {
+        const { data } = await supabase.auth.getSession()
+        const session = (data as any)?.session
+        if (!session) {
+          router.replace('/login')
+          return
+        }
+        setLoading(false)
+
+        // subscribe to auth changes (Supabase v2 returns { data: { subscription } })
+        const res = supabase.auth.onAuthStateChange((event, session) => {
+          if (!session) {
+            router.replace('/login')
+          }
+        })
+        subscription = (res as any)?.data?.subscription
+      } catch (err) {
+        console.error('Error verifying session:', err)
+        router.replace('/login')
+      }
+    }
+
+    verify()
+
+    return () => {
+      if (subscription && typeof subscription.unsubscribe === 'function') subscription.unsubscribe()
+    }
+  }, [router])
+
+  if (loading) return <p>Memverifikasi...</p>
+
+  return <TodoPage />
 }
